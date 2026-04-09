@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finance API Tester</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2230;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --danger: #f85149;
+      --warn: #d29922;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 60px 1fr;
+    }
+
+    /* ── Header ── */
+    header {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+    .logo span { font-size: 22px; }
+    .server-input { display: flex; align-items: center; gap: 10px; }
+    .server-input label { font-size: 13px; color: var(--muted); }
+    .server-input input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 6px 12px;
+      width: 230px;
+      outline: none;
+    }
+    .server-input input:focus { border-color: var(--accent); }
+    #status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--danger); transition: background .3s;
+    }
+    #status-dot.ok { background: var(--accent2); }
+
+    /* ── Sidebar ── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .token-box {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .token-box label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; display: block; }
+    .token-area {
+      display: flex; gap: 6px;
+    }
+    .token-area textarea {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 8px;
+      resize: vertical;
+      min-height: 60px;
+      outline: none;
+    }
+    .token-area textarea:focus { border-color: var(--accent); }
+    .clear-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px 8px;
+      transition: all .15s;
+    }
+    .clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    .section-header {
+      padding: 14px 16px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .endpoint-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      text-align: left;
+      width: 100%;
+      transition: background .12s;
+    }
+    .endpoint-btn:hover { background: var(--surface2); }
+    .endpoint-btn.active { background: rgba(88,166,255,.12); }
+
+    .method-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 38px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .GET  { background: rgba(56,139,253,.2);  color: #58a6ff; }
+    .POST { background: rgba(63,185,80,.2);   color: #3fb950; }
+    .PUT  { background: rgba(210,153,34,.2);  color: #d29922; }
+    .PATCH{ background: rgba(163,113,247,.2); color: #bc8cff; }
+    .DELETE { background: rgba(248,81,73,.2); color: #f85149; }
+
+    .ep-path { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+
+    /* ── Main ── */
+    main {
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+    .panel-body { padding: 18px; }
+
+    textarea.body-input, input.query-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 12px;
+      outline: none;
+      resize: vertical;
+    }
+    textarea.body-input { min-height: 140px; }
+    textarea.body-input:focus, input.query-input:focus { border-color: var(--accent); }
+
+    .form-row { margin-bottom: 14px; }
+    .form-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; font-weight: 500; }
+
+    .query-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .query-item label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #0d1117;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 28px;
+      transition: opacity .15s, transform .1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .send-btn:hover { opacity: .85; }
+    .send-btn:active { transform: scale(.97); }
+    .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .send-btn.loading { opacity: .7; }
+
+    /* ── Response ── */
+    .response-panel { display: none; }
+    .response-panel.visible { display: block; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .status-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .status-2xx { color: var(--accent2); }
+    .status-4xx { color: var(--warn); }
+    .status-5xx { color: var(--danger); }
+    .time-badge {
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: auto;
+    }
+
+    pre.response-body {
+      background: var(--bg);
+      border-radius: 0;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      margin: 0;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Syntax highlight */
+    .json-key    { color: #79c0ff; }
+    .json-string { color: #a5d6ff; }
+    .json-num    { color: #f0883e; }
+    .json-bool   { color: #ff7b72; }
+    .json-null   { color: #8b949e; }
+
+    /* Quick login strip */
+    .quick-login {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .role-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      padding: 6px 14px;
+      transition: all .15s;
+    }
+    .role-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .role-btn.admin-btn:hover  { border-color: #f85149; color: #f85149; }
+    .role-btn.analyst-btn:hover{ border-color: #d29922; color: #d29922; }
+    .role-btn.viewer-btn:hover { border-color: #3fb950; color: #3fb950; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 12px 18px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <span>💰</span> Finance API Tester
+  </div>
+  <div class="server-input">
+    <label>Server:</label>
+    <input id="base-url" type="text" value="http://localhost:5000" />
+    <div id="status-dot" title="Server status"></div>
+  </div>
+</header>
+
+<!-- ── Sidebar ── -->
+<aside>
+  <div class="token-box">
+    <label>JWT Token</label>
+    <div class="token-area">
+      <textarea id="jwt-token" placeholder="Login first to get your token..."></textarea>
+      <button class="clear-btn" onclick="clearToken()" title="Clear token">✕</button>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="form-label">Quick Login</div>
+      <div class="quick-login">
+        <button class="role-btn admin-btn"   onclick="quickLogin('admin@finance.com',   'Admin@123')">🔴 Admin</button>
+        <button class="role-btn analyst-btn" onclick="quickLogin('analyst@finance.com', 'Analyst@123')">🟡 Analyst</button>
+        <button class="role-btn viewer-btn"  onclick="quickLogin('viewer@finance.com',  'Viewer@123')">🟢 Viewer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">Auth</div>
+  <button class="endpoint-btn" onclick="load('POST','/api/auth/login',{email:'admin@finance.com',password:'Admin@123'})">
+    <span class="method-badge POST">POST</span>
+    <span class="ep-path">/api/auth/login</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('GET','/api/auth/me')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/api/auth/me</span>
+  </button>
+
+  <div class="section-header">Dashboard</div>
+  <button class="endpoint-btn" onclick="load('GET','/api/dashboard/summary')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/dashboard/summary</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('GET','/api/dashboard/categories')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/dashboard/categories</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('GET','/api/dashboard/recent')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/dashboard/recent</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('GET','/api/dashboard/trends')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/dashboard/trends</span>
+  </button>
+
+  <div class="section-header">Records</div>
+  <button class="endpoint-btn" onclick="load('GET','/api/records')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/api/records</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('POST','/api/records',{amount:5000,type:'income',category:'Salary',date:'2025-04-01',notes:'Test record'})">
+    <span class="method-badge POST">POST</span>
+    <span class="ep-path">/api/records</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('PUT','/api/records/:id',{amount:6000,notes:'Updated record'})">
+    <span class="method-badge PUT">PUT</span>
+    <span class="ep-path">/api/records/:id</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('DELETE','/api/records/:id')">
+    <span class="method-badge DELETE">DELETE</span>
+    <span class="ep-path">/api/records/:id</span>
+  </button>
+
+  <div class="section-header">Users (Admin)</div>
+  <button class="endpoint-btn" onclick="load('GET','/api/users')">
+    <span class="method-badge GET">GET</span>
+    <span class="ep-path">/api/users</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('POST','/api/users',{name:'New User',email:'newuser@finance.com',password:'NewUser@123',role:'viewer'})">
+    <span class="method-badge POST">POST</span>
+    <span class="ep-path">/api/users</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('PUT','/api/users/:id',{name:'Updated Name',role:'analyst',status:'active'})">
+    <span class="method-badge PUT">PUT</span>
+    <span class="ep-path">/api/users/:id</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('PATCH','/api/users/:id/role',{role:'analyst'})">
+    <span class="method-badge PATCH">PATCH</span>
+    <span class="ep-path">/api/users/:id/role</span>
+  </button>
+  <button class="endpoint-btn" onclick="load('DELETE','/api/users/:id')">
+    <span class="method-badge DELETE">DELETE</span>
+    <span class="ep-path">/api/users/:id</span>
+  </button>
+</aside>
+
+<!-- ── Main ── -->
+<main>
+  <!-- Request Panel -->
+  <div class="panel" id="request-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span id="req-method-badge" class="method-badge GET">GET</span>
+        <span id="req-path" style="font-family:'JetBrains Mono',monospace;font-size:14px;">/health</span>
+      </div>
+      <button class="send-btn" id="send-btn" onclick="sendRequest()">
+        <span>▶</span> Send
+      </button>
+    </div>
+    <div class="panel-body">
+
+      <!-- URL with optional :id segment -->
+      <div class="form-row" id="id-row" style="display:none;">
+        <label class="form-label">Resource ID (replaces :id in path)</label>
+        <input type="text" id="resource-id" class="query-input" placeholder="e.g. 663abc123def456789..." />
+      </div>
+
+      <!-- Query params -->
+      <div class="form-row" id="query-row" style="display:none;">
+        <label class="form-label">Query Parameters (optional)</label>
+        <div class="query-grid" id="query-grid"></div>
+      </div>
+
+      <!-- Body -->
+      <div class="form-row" id="body-row" style="display:none;">
+        <label class="form-label">Request Body (JSON)</label>
+        <textarea class="body-input" id="req-body" spellcheck="false"></textarea>
+      </div>
+
+      <!-- Health check default -->
+      <div id="default-msg" style="color:var(--muted);font-size:13px;">
+        Select an endpoint from the sidebar, or click below to test the health check.
+        <br/><br/>
+        <button class="send-btn" style="display:inline-flex;" onclick="load('GET','/health')">
+          <span>❤️</span> Health Check
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Response Panel -->
+  <div class="panel response-panel" id="response-panel">
+    <div class="panel-header">
+      <div class="panel-title">Response</div>
+      <div class="status-bar" style="padding:0;border:none;">
+        <span class="status-code" id="res-status">—</span>
+        <span id="res-status-text" style="color:var(--muted);font-size:13px;"></span>
+        <span class="time-badge" id="res-time"></span>
+      </div>
+    </div>
+    <pre class="response-body" id="res-body"></pre>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ── State ──
+  let currentMethod = 'GET';
+  let currentPath   = '/health';
+  let currentQueryDefs = [];
+
+  // ── Health check on load ──
+  window.addEventListener('load', () => {
+    checkServer();
+    setInterval(checkServer, 10000);
+  });
+
+  async function checkServer() {
+    const base = document.getElementById('base-url').value.trim();
+    try {
+      const r = await fetch(base + '/health', { signal: AbortSignal.timeout(3000) });
+      document.getElementById('status-dot').className = r.ok ? 'ok' : '';
+    } catch { document.getElementById('status-dot').className = ''; }
+  }
+
+  // ── Quick Login ──
+  async function quickLogin(email, password) {
+    const base = document.getElementById('base-url').value.trim();
+    try {
+      const r = await fetch(base + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const json = await r.json();
+      if (json.data?.token) {
+        document.getElementById('jwt-token').value = json.data.token;
+        toast(`✅ Logged in as ${json.data.user.role} (${json.data.user.name})`);
+      } else {
+        toast('❌ ' + (json.message || 'Login failed'));
+      }
+    } catch (e) { toast('❌ Cannot reach server. Is it running?'); }
+  }
+
+  function clearToken() {
+    document.getElementById('jwt-token').value = '';
+    toast('Token cleared');
+  }
+
+  // ── Load endpoint ──
+  const QUERY_PARAMS = {
+    '/api/records':           ['type','category','startDate','endDate','page','limit'],
+    '/api/users':             ['role','status','page','limit'],
+    '/api/dashboard/categories': ['type'],
+    '/api/dashboard/recent':  ['limit'],
+    '/api/dashboard/trends':  ['months'],
+  };
+
+  function load(method, path, body) {
+    currentMethod = method;
+    currentPath   = path;
+
+    document.getElementById('default-msg').style.display = 'none';
+    document.getElementById('response-panel').classList.remove('visible');
+
+    // Method badge
+    const badge = document.getElementById('req-method-badge');
+    badge.textContent = method;
+    badge.className = 'method-badge ' + method;
+    document.getElementById('req-path').textContent = path;
+
+    // ID field
+    const hasId = path.includes(':id');
+    document.getElementById('id-row').style.display = hasId ? '' : 'none';
+    if (hasId) document.getElementById('resource-id').value = '';
+
+    // Query params
+    const qDefs = QUERY_PARAMS[path] || [];
+    const qRow  = document.getElementById('query-row');
+    const qGrid = document.getElementById('query-grid');
+    qGrid.innerHTML = '';
+    if (qDefs.length) {
+      qRow.style.display = '';
+      qDefs.forEach(p => {
+        qGrid.innerHTML += `
+          <div>
+            <label>${p}</label>
+            <input class="query-input" id="qp-${p}" placeholder="${p}" />
+          </div>`;
+      });
+    } else { qRow.style.display = 'none'; }
+
+    // Body
+    const bodyRow = document.getElementById('body-row');
+    if (['POST','PUT','PATCH'].includes(method)) {
+      bodyRow.style.display = '';
+      document.getElementById('req-body').value = body ? JSON.stringify(body, null, 2) : '';
+    } else { bodyRow.style.display = 'none'; }
+
+    currentQueryDefs = qDefs;
+  }
+
+  // ── Send ──
+  async function sendRequest() {
+    const base  = document.getElementById('base-url').value.trim();
+    const token = document.getElementById('jwt-token').value.trim();
+    const btn   = document.getElementById('send-btn');
+
+    // Build URL
+    let url = currentPath;
+    if (url.includes(':id')) {
+      const id = document.getElementById('resource-id').value.trim();
+      if (!id) { toast('⚠️ Please enter an ID in the Resource ID field.'); return; }
+
+      // Handle PATCH /api/users/:id/role
+      url = url.replace(':id/role', id + '/role').replace(':id', id);
+    }
+
+    // Query string
+    const qps = [];
+    currentQueryDefs.forEach(p => {
+      const v = (document.getElementById('qp-' + p)?.value || '').trim();
+      if (v) qps.push(`${p}=${encodeURIComponent(v)}`);
+    });
+    if (qps.length) url += '?' + qps.join('&');
+
+    const fullUrl = base + url;
+
+    // Headers
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    // Body
+    let body;
+    if (['POST','PUT','PATCH'].includes(currentMethod)) {
+      const raw = document.getElementById('req-body').value.trim();
+      if (raw) {
+        try { body = raw; JSON.parse(raw); }
+        catch { toast('❌ Invalid JSON in request body.'); return; }
+      }
+    }
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.innerHTML = '<span>⏳</span> Sending...';
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch(fullUrl, {
+        method: currentMethod,
+        headers,
+        body: body || undefined,
+        signal: AbortSignal.timeout(10000)
+      });
+      const elapsed = Date.now() - t0;
+      const text = await res.text();
+      let pretty;
+      try { pretty = syntaxHighlight(JSON.stringify(JSON.parse(text), null, 2)); }
+      catch { pretty = escapeHtml(text); }
+
+      showResponse(res.status, elapsed, pretty);
+
+      // Auto-save token if login response
+      try {
+        const json = JSON.parse(text);
+        if (json.data?.token) {
+          document.getElementById('jwt-token').value = json.data.token;
+          toast('🔑 Token auto-saved!');
+        }
+      } catch {}
+
+    } catch (err) {
+      showResponse(0, Date.now() - t0, `<span style="color:var(--danger)">${err.message}\n\nMake sure the server is running at ${base}</span>`);
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.innerHTML = '<span>▶</span> Send';
+    }
+  }
+
+  function showResponse(status, ms, bodyHtml) {
+    const panel = document.getElementById('response-panel');
+    panel.classList.add('visible');
+
+    const sc = document.getElementById('res-status');
+    sc.textContent = status || 'ERR';
+    sc.className = 'status-code ' + (status >= 500 || !status ? 'status-5xx' : status >= 400 ? 'status-4xx' : 'status-2xx');
+
+    const statusTexts = {200:'OK',201:'Created',400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',409:'Conflict',422:'Unprocessable Entity',500:'Internal Server Error'};
+    document.getElementById('res-status-text').textContent = statusTexts[status] || '';
+    document.getElementById('res-time').textContent = ms + ' ms';
+    document.getElementById('res-body').innerHTML = bodyHtml;
+    panel.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── Syntax highlight ──
+  function syntaxHighlight(json) {
+    const esc = escapeHtml(json);
+    return esc.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (m) => {
+      if (/^"/.test(m)) {
+        if (/:$/.test(m)) return `<span class="json-key">${m}</span>`;
+        return `<span class="json-string">${m}</span>`;
+      }
+      if (/true|false/.test(m)) return `<span class="json-bool">${m}</span>`;
+      if (/null/.test(m))       return `<span class="json-null">${m}</span>`;
+      return `<span class="json-num">${m}</span>`;
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Toast ──
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
